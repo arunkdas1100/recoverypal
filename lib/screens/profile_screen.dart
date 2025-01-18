@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'profile_setup_screen.dart';
+import 'login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   double? _height;
   double? _weight;
   String? _profileImagePath;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -30,8 +34,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _age = preferences.getInt('age');
       _height = preferences.getDouble('height');
       _weight = preferences.getDouble('weight');
-      _profileImagePath = preferences.getString('profileImagePath');
+      _profileImagePath = preferences.getString('userPhoto');
     });
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Sign out from Firebase
+      await FirebaseAuth.instance.signOut();
+      
+      // Sign out from Google
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+
+      // Clear SharedPreferences
+      final SharedPreferences preferences = await SharedPreferences.getInstance();
+      await preferences.clear();
+
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -53,37 +91,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 60,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: _profileImagePath != null
-                  ? FileImage(File(_profileImagePath!))
-                  : null,
-              child: _profileImagePath == null
-                  ? const Icon(Icons.person_outline, size: 60, color: Colors.grey)
-                  : null,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: _profileImagePath != null
+                        ? (_profileImagePath!.startsWith('http')
+                            ? NetworkImage(_profileImagePath!)
+                            : FileImage(File(_profileImagePath!)) as ImageProvider)
+                        : null,
+                    child: _profileImagePath == null
+                        ? const Icon(Icons.person_outline, size: 60, color: Colors.grey)
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _name ?? 'No Name',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 32),
+                  _buildInfoCard(
+                    title: 'Personal Information',
+                    items: [
+                      InfoItem(icon: Icons.height, label: 'Height', value: '${_height?.toString() ?? 'Not set'} cm'),
+                      InfoItem(icon: Icons.monitor_weight_outlined, label: 'Weight', value: '${_weight?.toString() ?? 'Not set'} kg'),
+                    ],
+                  ),
+                  const SizedBox(height: 48),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Logout'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              _name ?? 'No Name',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 32),
-            _buildInfoCard(
-              title: 'Personal Information',
-              items: [
-                InfoItem(icon: Icons.cake_outlined, label: 'Age', value: _age?.toString() ?? 'Not set'),
-                InfoItem(icon: Icons.height, label: 'Height', value: '${_height?.toString() ?? 'Not set'} cm'),
-                InfoItem(icon: Icons.monitor_weight_outlined, label: 'Weight', value: '${_weight?.toString() ?? 'Not set'} kg'),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 

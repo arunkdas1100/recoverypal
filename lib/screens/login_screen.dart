@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:recoverypal/screens/home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_screen.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,12 +14,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
-  final GoogleSignIn googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'profile',
-    ],
-  );
 
   Future<void> _handleGoogleSignIn() async {
     try {
@@ -26,13 +21,35 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
 
+      // Initialize Google Sign In
+      final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser != null) {
-        // Store user info
+
+      if (googleUser == null) {
+        throw Exception('Google Sign In was cancelled');
+      }
+
+      // Get auth details from request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Create new credential for Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      final UserCredential userCredential = 
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        // Store user info in SharedPreferences
         final SharedPreferences preferences = await SharedPreferences.getInstance();
-        await preferences.setString('userEmail', googleUser.email);
-        await preferences.setString('userName', googleUser.displayName ?? '');
-        await preferences.setString('userPhoto', googleUser.photoUrl ?? '');
+        await preferences.setString('userEmail', user.email ?? '');
+        await preferences.setString('userName', user.displayName ?? '');
+        await preferences.setString('userPhoto', user.photoURL ?? '');
 
         // Check if user has completed profile setup
         final bool hasCompletedSetup = preferences.containsKey('height') && 
