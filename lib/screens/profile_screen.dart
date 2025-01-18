@@ -72,6 +72,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _buildProfileImage() {
+    return CircleAvatar(
+      radius: 60,
+      backgroundColor: Colors.grey[200],
+      backgroundImage: _profileImagePath != null && _profileImagePath!.startsWith('http')
+          ? NetworkImage(_profileImagePath!) as ImageProvider
+          : _profileImagePath != null
+              ? FileImage(File(_profileImagePath!))
+              : null,
+      child: _profileImagePath == null
+          ? const Icon(Icons.person_outline, size: 60, color: Colors.grey)
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,18 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: _profileImagePath != null
-                        ? (_profileImagePath!.startsWith('http')
-                            ? NetworkImage(_profileImagePath!)
-                            : FileImage(File(_profileImagePath!)) as ImageProvider)
-                        : null,
-                    child: _profileImagePath == null
-                        ? const Icon(Icons.person_outline, size: 60, color: Colors.grey)
-                        : null,
-                  ),
+                  _buildProfileImage(),
                   const SizedBox(height: 16),
                   Text(
                     _name ?? 'No Name',

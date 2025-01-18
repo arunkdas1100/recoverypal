@@ -26,6 +26,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildProfileImage(String? imagePath) {
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.white,
+      backgroundImage: imagePath != null && imagePath.startsWith('http')
+          ? NetworkImage(imagePath) as ImageProvider
+          : imagePath != null
+              ? FileImage(File(imagePath))
+              : null,
+      child: imagePath == null
+          ? const Icon(Icons.person_outline, color: Colors.blue)
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,15 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     FutureBuilder<SharedPreferences>(
                       future: SharedPreferences.getInstance(),
                       builder: (context, snapshot) {
-                        final String? imagePath = snapshot.data?.getString('profileImagePath');
-                        return CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.white,
-                          backgroundImage: imagePath != null ? FileImage(File(imagePath)) : null,
-                          child: imagePath == null
-                              ? const Icon(Icons.person_outline, color: Colors.blue)
-                              : null,
-                        );
+                        final String? imagePath = snapshot.data?.getString('userPhoto');
+                        return _buildProfileImage(imagePath);
                       },
                     ),
                     const SizedBox(width: 12),

@@ -99,7 +99,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               CircleAvatar(
                 radius: 60,
                 backgroundColor: Colors.grey[200],
-                backgroundImage: _googlePhotoUrl != null 
+                backgroundImage: _googlePhotoUrl != null
                     ? NetworkImage(_googlePhotoUrl!)
                     : null,
                 child: _googlePhotoUrl == null
