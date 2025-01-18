@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "108351713410",
+    "project_id": "recoverypal-6fe9c",
+    "storage_bucket": "recoverypal-6fe9c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108351713410:android:0e9fe0aa3bb22ee16a849b",
+        "android_client_info": {
+          "package_name": "com.example.recoverypal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "108351713410-mdkqf6i46mq7am72nkj4aonarq2q9bh1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8rDyqeEBaDCWc0CyrX0f1w-wOfPjLZWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "108351713410-mdkqf6i46mq7am72nkj4aonarq2q9bh1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
