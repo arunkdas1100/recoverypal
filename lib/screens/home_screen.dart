@@ -771,119 +771,186 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Add this widget to show upcoming appointments
   Widget _buildUpcomingAppointments() {
+    final now = DateTime.now();
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('appointments')
           .where('userId', isEqualTo: _auth.currentUser?.uid)
-          .where('status', isEqualTo: 'confirmed')
-          .orderBy('date', descending: false)
-          .limit(3)
+          // Remove the orderBy clause until index is ready
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (snapshot.hasError) {
+          print('Error loading appointments: ${snapshot.error}');
           return const SizedBox.shrink();
         }
 
+        if (!snapshot.hasData) {
+          return const SizedBox(height: 100, child: Center(
+            child: CircularProgressIndicator(),
+          ));
+        }
+
+        // Filter and sort in memory
+        final appointments = snapshot.data!.docs.where((doc) {
+          try {
+            final data = doc.data() as Map<String, dynamic>;
+            final endTime = (data['endTime'] as Timestamp).toDate();
+            return endTime.isAfter(now) && data['status'] == 'confirmed';
+          } catch (e) {
+            print('Error processing appointment: $e');
+            return false;
+          }
+        }).toList();
+
+        // Sort by date
+        appointments.sort((a, b) {
+          final dateA = (a.data() as Map<String, dynamic>)['date'] as Timestamp;
+          final dateB = (b.data() as Map<String, dynamic>)['date'] as Timestamp;
+          return dateA.compareTo(dateB);
+        });
+
+        // Limit to 3 most recent
+        final limitedAppointments = appointments.take(3).toList();
+
+        // Show empty state
+        if (limitedAppointments.isEmpty) {
+          return Card(
+            elevation: 4,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 48,
+                    color: Colors.blue.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Upcoming Appointments',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Schedule an appointment with a doctor',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Show appointments
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionTitle('Upcoming Appointments'),
             const SizedBox(height: 16),
-            ...snapshot.data!.docs.map((doc) {
-              final appointment = doc.data() as Map<String, dynamic>;
-              final date = (appointment['date'] as Timestamp).toDate();
-              final endTime = (appointment['endTime'] as Timestamp).toDate();
-              final now = DateTime.now();
-              
-              // Skip past appointments
-              if (endTime.isBefore(now)) {
+            ...limitedAppointments.map((doc) {
+              try {
+                final appointment = doc.data() as Map<String, dynamic>;
+                final date = (appointment['date'] as Timestamp).toDate();
+                final endTime = (appointment['endTime'] as Timestamp).toDate();
+
+                return Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.medical_services_outlined,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dr. ${appointment['doctorName']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  Text(
+                                    appointment['specialization'],
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.video_call),
+                              color: Colors.blue.shade600,
+                              onPressed: () => _joinMeeting(appointment['meetLink']),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, 
+                              size: 16, 
+                              color: Colors.grey.shade600
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MMMM d, yyyy').format(date),
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(Icons.access_time, 
+                              size: 16, 
+                              color: Colors.grey.shade600
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${DateFormat('h:mm a').format(date)} - ${DateFormat('h:mm a').format(endTime)}',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              } catch (e) {
+                print('Error rendering appointment: $e');
                 return const SizedBox.shrink();
               }
-
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.medical_services_outlined,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dr. ${appointment['doctorName']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  appointment['specialization'],
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.video_call),
-                            color: Colors.blue.shade600,
-                            onPressed: () => _joinMeeting(appointment['meetLink']),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, 
-                            size: 16, 
-                            color: Colors.grey.shade600
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateFormat('MMMM d, yyyy').format(date),
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Icon(Icons.access_time, 
-                            size: 16, 
-                            color: Colors.grey.shade600
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${DateFormat('h:mm a').format(date)} - ${DateFormat('h:mm a').format(endTime)}',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
             }).toList(),
           ],
         );
