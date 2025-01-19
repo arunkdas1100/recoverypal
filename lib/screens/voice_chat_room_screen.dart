@@ -323,6 +323,36 @@ class _VoiceChatRoomScreenState extends State<VoiceChatRoomScreen> {
     );
   }
 
+  // Add this method to end the room
+  Future<void> _endRoom() async {
+    try {
+      // Leave the Agora channel first
+      await _engine?.leaveChannel();
+      
+      // Delete the room document
+      await _firestore.collection('voiceRooms').doc(widget.roomId).delete();
+      
+      if (!mounted) return;
+      // Show success message and pop back
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Room ended successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      print('Error ending room: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error ending room: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
@@ -339,120 +369,171 @@ class _VoiceChatRoomScreenState extends State<VoiceChatRoomScreen> {
           snapshot.data!.id,
         );
 
+        final isHost = room.hostId == _auth.currentUser?.uid;
+
         return Scaffold(
           appBar: AppBar(
             title: Text(room.name),
-            actions: [
-              if (room.hostId == _auth.currentUser!.uid)
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () async {
-                    await _firestore.collection('voiceRooms').doc(widget.roomId).delete();
-                    if (!mounted) return;
-                    Navigator.pop(context);
-                  },
-                ),
-            ],
           ),
           body: GradientBackground(
-            child: Column(
+            child: Stack(
               children: [
-                if (room.description.isNotEmpty)
-                  CustomCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                Column(
+                  children: [
+                    if (room.description.isNotEmpty)
+                      CustomCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.info_outline, color: AppTheme.primaryColor),
-                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.info_outline, color: AppTheme.primaryColor),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'About this room',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
                             Text(
-                              'About this room',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              room.description,
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          room.description,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                CustomCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+                      ),
+                    CustomCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            room.isPrivate ? Icons.lock : Icons.lock_open,
-                            size: 16,
-                            color: Colors.grey[600],
+                          Row(
+                            children: [
+                              Icon(
+                                room.isPrivate ? Icons.lock : Icons.lock_open,
+                                size: 16,
+                                color: Colors.grey[600],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                room.isPrivate ? 'Private Room' : 'Public Room',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
                           Text(
-                            room.isPrivate ? 'Private Room' : 'Public Room',
+                            '${room.participants.length}/${room.maxParticipants} participants',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                         ],
                       ),
-                      Text(
-                        '${room.participants.length}/${room.maxParticipants} participants',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: Wrap(
-                      spacing: 20,
-                      runSpacing: 20,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (final participant in room.participants)
-                          _buildParticipantAvatar(
-                            participant,
-                            !_isMuted && participant == _auth.currentUser!.uid,
-                          ),
-                      ],
                     ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
+                    Expanded(
+                      child: Center(
+                        child: Wrap(
+                          spacing: 20,
+                          runSpacing: 20,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            for (final participant in room.participants)
+                              _buildParticipantAvatar(
+                                participant,
+                                !_isMuted && participant == _auth.currentUser!.uid,
+                              ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(16),
+                    ),
+                  ],
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Mute button
                       _buildControlButton(
                         onPressed: _toggleMute,
                         icon: _isMuted ? Icons.mic_off : Icons.mic,
-                        color: _isMuted ? AppTheme.errorColor : AppTheme.successColor,
+                        color: _isMuted ? Colors.red : Colors.blue,
                       ),
-                      const SizedBox(width: 16),
-                      _buildControlButton(
-                        onPressed: () {
-                          _leaveChannel();
-                          Navigator.pop(context);
-                        },
-                        icon: Icons.call_end,
-                        color: AppTheme.errorColor,
-                      ),
+                      
+                      const SizedBox(width: 24),
+                      
+                      // Add End Room button for host
+                      if (isHost)
+                        _buildControlButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('End Room'),
+                                content: const Text(
+                                  'Are you sure you want to end this room? '
+                                  'This action cannot be undone.'
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _endRoom();
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('End Room'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: Icons.stop_circle,
+                          color: Colors.red,
+                        ),
+                      
+                      const SizedBox(width: 24),
+                      
+                      // Leave Room button for non-hosts
+                      if (!isHost)
+                        _buildControlButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Leave Room'),
+                                content: const Text('Are you sure you want to leave this room?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _leaveChannel();
+                                      Navigator.pop(context);
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Leave'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: Icons.exit_to_app,
+                          color: Colors.orange,
+                        ),
                     ],
                   ),
                 ),

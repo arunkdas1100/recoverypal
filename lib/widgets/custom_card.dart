@@ -2,23 +2,27 @@ import 'package:flutter/material.dart';
 
 class CustomCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry? padding;
   final VoidCallback? onTap;
+  final EdgeInsetsGeometry? padding;
 
   const CustomCard({
-    super.key, 
+    super.key,
     required this.child,
-    this.padding,
     this.onTap,
+    this.padding,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: padding ?? const EdgeInsets.all(16),
           child: child,

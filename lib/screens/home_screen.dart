@@ -14,6 +14,8 @@ import '../models/voice_room.dart';
 import '../models/daily_check_in.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'ai_chat_screen.dart';
+import '../widgets/custom_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -443,6 +445,61 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               // Add this widget to show upcoming appointments
               _buildUpcomingAppointments(),
+              // Add AI Chatbot section
+              CustomCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AIChatScreen(),
+                    ),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Hero(
+                      tag: 'chatbot_icon',
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.health_and_safety,
+                          color: Colors.blue.shade700,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AI Medical Assistant',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Chat with Recoverly for personal medical assistance',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.grey.shade400,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

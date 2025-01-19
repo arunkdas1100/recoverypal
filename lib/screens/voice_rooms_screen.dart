@@ -110,7 +110,11 @@ class _VoiceRoomsScreenState extends State<VoiceRoomsScreen> {
         title: const Text('Voice Rooms'),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('voiceRooms').snapshots(),
+        stream: _firestore
+            .collection('voiceRooms')
+            // Add orderBy to show newest rooms first
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -137,6 +141,8 @@ class _VoiceRoomsScreenState extends State<VoiceRoomsScreen> {
                 rooms[index].id,
               );
 
+              final isHost = room.hostId == _auth.currentUser?.uid;
+
               return Card(
                 child: ListTile(
                   leading: Icon(
@@ -144,64 +150,126 @@ class _VoiceRoomsScreenState extends State<VoiceRoomsScreen> {
                     color: room.isPrivate ? Colors.red : Colors.green,
                   ),
                   title: Text(room.name),
-                  subtitle: Text('${room.participants.length}/${room.maxParticipants} participants'),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      if (room.isPrivate) {
-                        String enteredPin = '';
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Enter PIN'),
-                            content: TextField(
-                              decoration: const InputDecoration(labelText: 'PIN Code'),
-                              keyboardType: TextInputType.number,
-                              maxLength: 4,
-                              onChanged: (value) => enteredPin = value,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  if (enteredPin == room.pinCode) {
-                                    Navigator.pop(context);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => VoiceChatRoomScreen(
-                                          roomId: room.id,
-                                        ),
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Incorrect PIN code'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: const Text('Join'),
-                              ),
-                            ],
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${room.participants.length}/${room.maxParticipants} participants'),
+                      if (isHost)
+                        Text(
+                          'You are the host',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => VoiceChatRoomScreen(
-                              roomId: room.id,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Join'),
+                        ),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isHost)
+                        IconButton(
+                          icon: const Icon(Icons.stop_circle, color: Colors.red),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('End Room'),
+                                content: const Text(
+                                  'Are you sure you want to end this room? '
+                                  'This action cannot be undone.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('End Room'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await _firestore
+                                  .collection('voiceRooms')
+                                  .doc(room.id)
+                                  .delete();
+                              
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Room ended successfully'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (room.isPrivate) {
+                            String enteredPin = '';
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Enter PIN'),
+                                content: TextField(
+                                  decoration: const InputDecoration(labelText: 'PIN Code'),
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 4,
+                                  onChanged: (value) => enteredPin = value,
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      if (enteredPin == room.pinCode) {
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => VoiceChatRoomScreen(
+                                              roomId: room.id,
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Incorrect PIN code'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: const Text('Join'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VoiceChatRoomScreen(
+                                  roomId: room.id,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Join'),
+                      ),
+                    ],
                   ),
                 ),
               );
