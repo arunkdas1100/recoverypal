@@ -17,8 +17,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   Future<void> _bookAppointment(Doctor doctor, TimeSlot slot) async {
     try {
-      // Generate Google Meet link (in production, this should be done securely on the backend)
-      final meetLink = 'https://meet.google.com/${DateTime.now().millisecondsSinceEpoch}';
+      // Generate a unique meeting ID
+      final meetingId = '${DateTime.now().millisecondsSinceEpoch}-${_auth.currentUser?.uid?.substring(0, 8)}';
+      final meetLink = 'https://meet.google.com/$meetingId';
       
       // Create appointment document
       await _firestore.collection('appointments').add({

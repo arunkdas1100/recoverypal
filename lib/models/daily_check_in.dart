@@ -33,18 +33,20 @@ class DailyCheckIn {
     };
   }
 
-  factory DailyCheckIn.fromMap(Map<String, dynamic> map, String docId) {
+  factory DailyCheckIn.fromMap(Map<String, dynamic> map, String id) {
     return DailyCheckIn(
-      id: docId,
-      date: (map['date'] as Timestamp).toDate(),
-      sleepHours: (map['sleepHours'] as num).toDouble(),
-      waterIntake: (map['waterIntake'] as num).toDouble(),
+      id: id,
+      userId: map['userId'] ?? '',
+      date: map['timestamp'] != null 
+          ? (map['timestamp'] as Timestamp).toDate() 
+          : DateTime.now(),
+      sleepHours: (map['sleep'] as num).toDouble(),
+      waterIntake: (map['water'] as num).toDouble(),
       completedRoutines: (map['completedRoutines'] as List<dynamic>)
           .map((r) => DailyRoutine.fromMap(r as Map<String, dynamic>))
           .toList(),
-      userId: map['userId'] as String,
-      isCompleted: map['isCompleted'] as bool,
-      goalAchieved: map['goalAchieved'] as bool? ?? false,
+      isCompleted: map['isCompleted'] ?? false,
+      goalAchieved: map['goalAchieved'] ?? false,
     );
   }
 }

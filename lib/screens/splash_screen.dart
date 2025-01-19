@@ -11,16 +11,48 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
   @override
   void initState() {
     super.initState();
+    
+    // Initialize animation controller
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    // Create a curved animation for smooth effect
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
+    // Create a Tween animation for size
+    _animation = Tween<double>(
+      begin: 180.0, // Starting size
+      end: 250.0,   // Ending size
+    ).animate(_animation);
+
+    // Start the animation
+    _controller.forward();
+
+    // Check login state after animation
     _checkLoginState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _checkLoginState() async {
     try {
-      // Add a small delay to show the splash screen
+      // Add a delay to match animation duration
       await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted) return;
@@ -58,18 +90,55 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/logo.png',
-              width: 150,
-              height: 150,
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade50,
+              Colors.white,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _animation,
+                builder: (context, child) {
+                  return Container(
+                    width: _animation.value,
+                    height: _animation.value,
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/logo.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                  strokeWidth: 3,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

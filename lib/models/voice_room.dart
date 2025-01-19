@@ -9,6 +9,7 @@ class VoiceRoom {
   final List<String> participants;
   final DateTime createdAt;
   final int maxParticipants = 3;
+  final String description;
 
   VoiceRoom({
     required this.id,
@@ -18,6 +19,7 @@ class VoiceRoom {
     this.pinCode,
     required this.participants,
     required this.createdAt,
+    this.description = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +32,7 @@ class VoiceRoom {
       'participants': participants,
       'createdAt': Timestamp.fromDate(createdAt),
       'maxParticipants': maxParticipants,
+      'description': description,
     };
   }
 
@@ -42,6 +45,7 @@ class VoiceRoom {
       pinCode: map['pinCode'],
       participants: List<String>.from(map['participants'] ?? []),
       createdAt: (map['createdAt'] as Timestamp).toDate(),
+      description: map['description'] ?? '',
     );
   }
 } 

@@ -12,6 +12,8 @@ import 'voice_chat_room_screen.dart';
 import 'appointments_screen.dart';
 import '../models/voice_room.dart';
 import '../models/daily_check_in.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -173,8 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         .map((doc) {
                           try {
                             final data = doc.data() as Map<String, dynamic>;
-                            print('Processing document: ${doc.id}');
-                            print('Document data: $data');
+                            // Add null check for timestamp
+                            if (data['timestamp'] == null) {
+                              print('Skipping document ${doc.id} due to missing timestamp');
+                              return null;
+                            }
                             return DailyCheckIn.fromMap(data, doc.id);
                           } catch (e, stackTrace) {
                             print('Error parsing check-in document ${doc.id}: $e');
@@ -435,6 +440,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
               ),
+              const SizedBox(height: 24),
+              // Add this widget to show upcoming appointments
+              _buildUpcomingAppointments(),
             ],
           ),
         ),
@@ -606,33 +614,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(builder: (context) => const AppointmentsScreen()),
                 ),
               ),
-              const SizedBox(height: 12),
-              // Community Section
-              _buildFeatureCard(
-                icon: Icons.people,
-                iconColor: Colors.green,
-                title: 'Community',
-                subtitle: 'Connect with others in your recovery journey',
-                isComingSoon: true,
-              ),
-              const SizedBox(height: 12),
-              // Events Section
-              _buildFeatureCard(
-                icon: Icons.event,
-                iconColor: Colors.orange,
-                title: 'Events',
-                subtitle: 'Join and organize recovery-focused events',
-                isComingSoon: true,
-              ),
-              const SizedBox(height: 12),
-              // Support Groups Section
-              _buildFeatureCard(
-                icon: Icons.favorite,
-                iconColor: Colors.purple,
-                title: 'Support Groups',
-                subtitle: 'Join support groups and share experiences',
-                isComingSoon: true,
-              ),
               const SizedBox(height: 20),
               // Active Voice Rooms Preview
               StreamBuilder<QuerySnapshot>(
@@ -786,5 +767,151 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  // Add this widget to show upcoming appointments
+  Widget _buildUpcomingAppointments() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('appointments')
+          .where('userId', isEqualTo: _auth.currentUser?.uid)
+          .where('status', isEqualTo: 'confirmed')
+          .orderBy('date', descending: false)
+          .limit(3)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('Upcoming Appointments'),
+            const SizedBox(height: 16),
+            ...snapshot.data!.docs.map((doc) {
+              final appointment = doc.data() as Map<String, dynamic>;
+              final date = (appointment['date'] as Timestamp).toDate();
+              final endTime = (appointment['endTime'] as Timestamp).toDate();
+              final now = DateTime.now();
+              
+              // Skip past appointments
+              if (endTime.isBefore(now)) {
+                return const SizedBox.shrink();
+              }
+
+              return Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.medical_services_outlined,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Dr. ${appointment['doctorName']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  appointment['specialization'],
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.video_call),
+                            color: Colors.blue.shade600,
+                            onPressed: () => _joinMeeting(appointment['meetLink']),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, 
+                            size: 16, 
+                            color: Colors.grey.shade600
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat('MMMM d, yyyy').format(date),
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(Icons.access_time, 
+                            size: 16, 
+                            color: Colors.grey.shade600
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${DateFormat('h:mm a').format(date)} - ${DateFormat('h:mm a').format(endTime)}',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  // Update the _joinMeeting method
+  void _joinMeeting(String meetLink) async {
+    final Uri url = Uri.parse(meetLink);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not launch Google Meet'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error launching meet: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 } 

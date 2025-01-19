@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'create_blog_screen.dart';
+import 'blog_detail_screen.dart';
 
 class BlogScreen extends StatelessWidget {
   const BlogScreen({super.key});
@@ -85,110 +86,124 @@ class BlogScreen extends StatelessWidget {
             itemCount: blogs.length,
             itemBuilder: (context, index) {
               final blog = blogs[index].data() as Map<String, dynamic>;
-                  final authorName = blog['authorName'] ?? 'Anonymous';
-                  final timestamp = blog['timestamp'] as Timestamp?;
-                  
-                  return Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              final authorName = blog['authorName'] ?? 'Anonymous';
+              final timestamp = blog['timestamp'] as Timestamp?;
+              final blogId = blogs[index].id;
+              
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlogDetailScreen(
+                        blog: blog,
+                        blogId: blogId,
+                      ),
                     ),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (blog['imageUrl'] != null)
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                            child: Image.network(
-                              blog['imageUrl'],
-                              width: double.infinity,
-                              height: 200,
-                              fit: BoxFit.cover,
-                            ),
+                  );
+                },
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (blog['imageUrl'] != null)
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12),
                           ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.blue.shade100,
-                                    child: Text(
-                                      authorName[0].toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.blue.shade800,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          authorName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        if (timestamp != null)
-                                          Text(
-                                            _formatDate(timestamp),
-                                            style: TextStyle(
-                                              color: Colors.grey.shade600,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                blog['title'] ?? 'Untitled',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                blog['content'] ?? '',
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  height: 1.5,
-                                ),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  _buildChip(
-                                    Icons.favorite_border,
-                                    '${blog['likes'] ?? 0}',
-                                    Colors.red,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _buildChip(
-                                    Icons.comment_outlined,
-                                    '${(blog['comments'] as List?)?.length ?? 0}',
-                                    Colors.blue,
-                                  ),
-                                ],
-                              ),
-                            ],
+                          child: Image.network(
+                            blog['imageUrl'],
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      ],
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.blue.shade100,
+                                  child: Text(
+                                    authorName[0].toUpperCase(),
+                                    style: TextStyle(
+                                      color: Colors.blue.shade800,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        authorName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      if (timestamp != null)
+                                        Text(
+                                          _formatDate(timestamp),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              blog['title'] ?? 'Untitled',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              blog['content'] ?? '',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                height: 1.5,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                _buildChip(
+                                  Icons.favorite_border,
+                                  '${blog['likes'] ?? 0}',
+                                  Colors.red,
+                                ),
+                                const SizedBox(width: 12),
+                                _buildChip(
+                                  Icons.comment_outlined,
+                                  '${(blog['comments'] as List?)?.length ?? 0}',
+                                  Colors.blue,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

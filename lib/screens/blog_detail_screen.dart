@@ -116,80 +116,122 @@ class _BlogDetailScreenState extends State<BlogDetailScreen> {
     final date = timestamp?.toDate() ?? DateTime.now();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.blog['title']?.toString() ?? 'Untitled'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.blog['title']?.toString() ?? 'Untitled',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: widget.blog['imageUrl'] != null ? 300.0 : 0.0,
+            floating: true,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: widget.blog['imageUrl'] != null
+                  ? Image.network(
+                      widget.blog['imageUrl'],
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            const SizedBox(height: 16),
-            
-            Row(
-              children: [
-                const Icon(Icons.person_outline, size: 20),
-                const SizedBox(width: 8),
-                Text(widget.blog['authorName']?.toString() ?? 'Anonymous'),
-                const Spacer(),
-                Text(
-                  DateFormat('MMMM d, yyyy').format(date),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            Text(
-              widget.blog['content']?.toString() ?? 'No content available',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                height: 1.6,
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Icon(
-                  Icons.remove_red_eye_outlined,
-                  size: 20,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${widget.blog['views']?.toString() ?? '0'} views',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(width: 16),
-                _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : IconButton(
-                        icon: Icon(
-                          _isLiked ? Icons.favorite : Icons.favorite_border,
-                          size: 20,
-                          color: _isLiked ? Colors.red : Colors.grey[600],
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.blog['title']?.toString() ?? 'Untitled',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.blue.shade100,
+                        child: Text(
+                          (widget.blog['authorName']?[0] ?? 'A').toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        onPressed: _toggleLike,
                       ),
-                const SizedBox(width: 4),
-                Text(
-                  '$_likeCount likes',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.blog['authorName']?.toString() ?? 'Anonymous',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMMM d, yyyy').format(date),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  Text(
+                    widget.blog['content']?.toString() ?? 'No content available',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      height: 1.6,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.remove_red_eye_outlined,
+                            size: 20,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${widget.blog['views']?.toString() ?? '0'} views',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : IconButton(
+                                  icon: Icon(
+                                    _isLiked ? Icons.favorite : Icons.favorite_border,
+                                    color: _isLiked ? Colors.red : Colors.grey[600],
+                                  ),
+                                  onPressed: _toggleLike,
+                                ),
+                          Text(
+                            '$_likeCount likes',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
