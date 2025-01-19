@@ -1,99 +1,200 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'dart:math';
 import 'create_blog_screen.dart';
-import 'blog_detail_screen.dart';
 
-class BlogScreen extends StatefulWidget {
+class BlogScreen extends StatelessWidget {
   const BlogScreen({super.key});
 
   @override
-  State<BlogScreen> createState() => _BlogScreenState();
-}
-
-class _BlogScreenState extends State<BlogScreen> {
-  String _sortBy = 'latest'; // 'latest' or 'random'
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Blogs'),
-        actions: [
-          // Sort dropdown
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.sort),
-            onSelected: (value) {
-              setState(() {
-                _sortBy = value;
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'latest',
-                child: Text('Latest First'),
-              ),
-              const PopupMenuItem(
-                value: 'random',
-                child: Text('Random'),
-              ),
-            ],
-          ),
-        ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.blue.shade800,
+            Colors.blue.shade50,
+          ],
+          stops: const [0.0, 0.2],
+        ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _sortBy == 'latest'
-            ? FirebaseFirestore.instance
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text(
+            'Recovery Stories',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: SafeArea(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
                 .collection('blogs')
                 .orderBy('timestamp', descending: true)
-                .snapshots()
-            : FirebaseFirestore.instance
-                .collection('blogs')
                 .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+                return Center(
+                  child: Text('Error: ${snapshot.error}'),
+                );
+              }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
           }
 
           final blogs = snapshot.data!.docs;
           
           if (blogs.isEmpty) {
-            return const Center(
-              child: Text('No blogs yet. Be the first to write one!'),
-            );
-          }
-
-          // If random is selected, shuffle the blogs
-          if (_sortBy == 'random') {
-            blogs.shuffle();
-          }
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.article_outlined,
+                        size: 64,
+                        color: Colors.blue.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No stories yet',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Be the first to share your story',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: blogs.length,
             itemBuilder: (context, index) {
               final blog = blogs[index].data() as Map<String, dynamic>;
-              return _BlogCard(
-                blog: blog,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BlogDetailScreen(
-                      blog: blog,
-                      blogId: blogs[index].id,
+                  final authorName = blog['authorName'] ?? 'Anonymous';
+                  final timestamp = blog['timestamp'] as Timestamp?;
+                  
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (blog['imageUrl'] != null)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              blog['imageUrl'],
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: Colors.blue.shade100,
+                                    child: Text(
+                                      authorName[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.blue.shade800,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          authorName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        if (timestamp != null)
+                                          Text(
+                                            _formatDate(timestamp),
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                blog['title'] ?? 'Untitled',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                blog['content'] ?? '',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  height: 1.5,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  _buildChip(
+                                    Icons.favorite_border,
+                                    '${blog['likes'] ?? 0}',
+                                    Colors.red,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildChip(
+                                    Icons.comment_outlined,
+                                    '${(blog['comments'] as List?)?.length ?? 0}',
+                                    Colors.blue,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                 ),
               );
             },
           );
         },
+          ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -102,62 +203,38 @@ class _BlogScreenState extends State<BlogScreen> {
             MaterialPageRoute(builder: (context) => const CreateBlogScreen()),
           );
         },
-        child: const Icon(Icons.edit),
+          backgroundColor: Colors.blue.shade600,
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
-}
 
-class _BlogCard extends StatelessWidget {
-  final Map<String, dynamic> blog;
-  final VoidCallback onTap;
+  String _formatDate(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return '${date.day}/${date.month}/${date.year}';
+  }
 
-  const _BlogCard({
-    required this.blog,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Safely get timestamp
-    final timestamp = blog['timestamp'] as Timestamp?;
-    final date = timestamp?.toDate() ?? DateTime.now();
-    
-    // Safely get content preview
-    final content = blog['content']?.toString() ?? 'No content';
-    final previewLength = min(content.length, 100);
-    final contentPreview = content.substring(0, previewLength);
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
             children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 4),
               Text(
-                blog['title']?.toString() ?? 'Untitled',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                DateFormat('MMMM d, yyyy').format(date),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                contentPreview,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              if (content.length > 100) 
-                const Text('...'),
-            ],
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
